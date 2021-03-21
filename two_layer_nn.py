@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import cupy as cp
+import pickle
 
 
 class Affine: # A = xW + b
@@ -103,21 +104,12 @@ class TwoLayerNN:
         return gradients
 
 
-
-
 # Load MNIST dataset
-from tensorflow.keras.datasets import mnist
-(x_train, temp_train), (x_test, temp_test) = mnist.load_data()
-x_train = cp.array(x_train.reshape(60000, 784) / 255)
-x_test = cp.array(x_test.reshape(10000, 784) / 255)
-
-# t -> one-hot encoding
-t_train = cp.zeros((60000, 10))
-t_test = cp.zeros((10000, 10))
-for i, n in enumerate(temp_train):
-    t_train[i][n] = 1
-for i, n in enumerate(temp_test):
-    t_test[i][n] = 1
+with open("MNIST_onehot.pickle", "rb") as fr:
+    x_train = pickle.load(fr)
+    x_test = pickle.load(fr)
+    t_train = pickle.load(fr)
+    t_test = pickle.load(fr)
 
 # Apply model to MNIST dataset
 model = TwoLayerNN(784, 100, 10)
