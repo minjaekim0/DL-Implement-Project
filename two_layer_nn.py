@@ -105,7 +105,7 @@ class TwoLayerNN:
 
 
 # Load MNIST dataset
-with open("MNIST_onehot.pickle", "rb") as fr:
+with open("MNIST_flattened_onehot.pickle", "rb") as fr:
     x_train = pickle.load(fr)
     x_test = pickle.load(fr)
     t_train = pickle.load(fr)
