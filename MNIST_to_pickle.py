@@ -3,6 +3,8 @@ from tensorflow.keras.datasets import mnist
 import pickle
 
 (x_train, temp_train), (x_test, temp_test) = mnist.load_data()
+x_train = cp.array(x_train)
+x_test = cp.array(x_test)
 
 # t -> one-hot encoding
 t_train = cp.zeros((60000, 10))
