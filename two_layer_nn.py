@@ -20,7 +20,7 @@ class Affine: # A = xW + b
         return dLdx
 
 
-class Relu: # y = Relu(x)
+class ReLU: # y = ReLU(x)
     def forward(self, x):
         self.x = x
         x_ = x.copy()
@@ -68,7 +68,7 @@ class TwoLayerNN:
 
         self.layers = {}
         self.layers['Affine1'] = Affine(self.parameters['W1'], self.parameters['b1'])
-        self.layers['Relu1'] = Relu()
+        self.layers['ReLU1'] = ReLU()
         self.layers['Affine2'] = Affine(self.parameters['W2'], self.parameters['b2'])
 
         self.last_layer = Softmax_with_CE()
