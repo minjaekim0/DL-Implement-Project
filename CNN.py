@@ -74,6 +74,9 @@ class Convolution: # O = I * F + B
         OH, OW = H - FH + 1, W - FW + 1
         O = cp.zeros((N, FN, OH, OW))
         
+        """
+        # slow method
+
         for n in range(N):
             for fn in range(FN):
                 for oh in range(OH):
@@ -84,6 +87,27 @@ class Convolution: # O = I * F + B
                                 for w in range(ow, ow+FW):
                                     O[n, fn, oh, ow] += I[n, c, h, w] * F[fn, c, h-oh, w-ow]
                         O[n, fn, oh, ow] += B[fn]
+        """
+
+        I_ = cp.zeros((N, OH*OW, C*FH*FW))
+        F_ = cp.zeros((C*FH*FW, FN))
+        B_ = cp.zeros((OH*OW, FN))
+
+        for n in range(N):
+            for oh in range(OH):
+                for ow in range(OW):
+                    I_[n, oh*OW + ow] = I[n, 0:C, oh:oh+FH, ow:ow+FW].reshape(-1)
+
+        for fn in range(FN):
+            F_[:, fn] = F[fn, 0:C, 0:FH, 0:FW].reshape(-1)
+            B_[:, fn] = B[fn]
+
+        O_ = cp.matmul(I_, F_) + B_
+
+        for n in range(N):
+            for fn in range(FN):
+                O[n, fn] = O_[n, :, fn].reshape(OH, OW)
+
         return O
 
     def backward(self, dLdO):
@@ -96,6 +120,12 @@ class Convolution: # O = I * F + B
         OH, OW = H - FH + 1, W - FW + 1
 
         dLdB = cp.zeros(B.shape)
+        dLdF = cp.zeros(F.shape)
+        dLdI = cp.zeros(I.shape)
+
+        """
+        # slow methods
+
         for fn in range(FN):
             
             for n in range(N):
@@ -103,8 +133,7 @@ class Convolution: # O = I * F + B
                     for ow in range(OW):
                         dLdB[fn] += dLdO[n, fn, oh, ow]
         self.dLdB = dLdB
-
-        dLdF = cp.zeros(F.shape)
+        
         for fn in range(FN):
             for c in range(C):
                 for fh in range(FH):
@@ -115,8 +144,7 @@ class Convolution: # O = I * F + B
                                 for ow in range(OW):
                                     dLdF[fn, c, fh, fw] += dLdO[n, fn, oh, ow] * I[n, c, fh+oh, fw+ow]
         self.dLdF = dLdF
-
-        dLdI = cp.zeros(I.shape)
+        
         for n in range(N):
             for c in range(C):
                 for h in range(H):
@@ -131,8 +159,68 @@ class Convolution: # O = I * F + B
                             for oh in range(oh_min, oh_max+1):
                                 for ow in range(ow_min, ow_max+1):
                                     dLdI[n, c, h, w] += dLdO[n, fn, oh, ow] * F[fn, c, h-oh, w-ow]
-        return dLdI
+        
+        """
 
+        # Calculate dLdB
+        # Reshaped matrix -> Add _B in the end of the name
+        dLdO_B = cp.zeros((FN, N*OH*OW))
+        one_B = cp.ones((N*OH*OW, 1))
+
+        for fn in range(FN):
+            dLdO_B[fn] = dLdO[0:N, fn, 0:OH, 0:OW].reshape(-1)
+        
+        dLdB_B = cp.matmul(dLdO_B, one_B)
+        dLdB = dLdB_B.reshape(-1)
+        self.dLdB = dLdB
+
+
+        # Calculate dLdF
+        # Reshaped matrix -> Add _F in the end of the name
+        dLdO_F = dLdO_B
+        I_F = cp.zeros((N*OH*OW, C*FH*FW))
+        
+        for c in range(C):
+            for fh in range(FH):
+                for fw in range(FW):
+                    I_F[:, c*FH*FW + fh*FW + fw] = \
+                        I[0:N, c, fh:fh+OH, fw:fw+OW].reshape(-1)
+        
+        dLdF_F = cp.matmul(dLdO_F, I_F)
+
+        for fn in range(FN):
+            dLdF[fn] = dLdF_F[fn].reshape(C, FH, FW)
+        
+        self.dLdF = dLdF
+
+
+        # Calculate dLdI
+        # Reshaped matrix -> Add _I in the end of the name
+        dLdO_padding = cp.zeros((N, FN, OH+2*FH-2, OW+2*FW-2))
+        dLdO_padding[:, :, FH-1:FH+OH-1, FW-1:FW+OW-1] = dLdO
+
+        dLdO_I = cp.zeros((N, H*W, FN*FH*FW))
+        F_I = cp.zeros((FN*FH*FW, C))
+
+        for n in range(N):
+            for h in range(H):
+                for w in range(W):
+                    dLdO_I[n, h*W + w] = \
+                        dLdO_padding[n, 0:FN, h:h+FH, w:w+FW].reshape(-1)
+                    # h-FH+1:h+1 -> add FH-1 to both
+                    # w-FW+1:w+1 -> add FW-1 to both
+        
+        for c in range(C):
+            F_I[:, c] = F[0:FN, c, 0:FH, 0:FW].reshape(-1)[::-1]
+        
+        dLdI_I = cp.matmul(dLdO_I, F_I)
+
+        for n in range(N):
+            for c in range(C):
+                dLdI[n, c] = dLdI_I[n, :, c].reshape(H, W)
+
+        return dLdI
+        
 
 class Flatten: # y = Flatten(x)
     def forward(self, x):
@@ -148,18 +236,22 @@ class Flatten: # y = Flatten(x)
 
 
 class CNN:
-    def __init__(self, input_dimension=(1, 28, 28), filters=7, filter_size=(5, 5), hidden_size=100, output_size=10):
+    def __init__(self, input_dimension=(1, 28, 28), filters=7, filter_size=(5, 5), \
+        hidden_size=100, output_size=10, init_std = 1):
         C, H, W = input_dimension
         FN = filters
         FH, FW = filter_size
         OH, OW = H - FH + 1, W - FW + 1
         
         self.parameters = {}
-        self.parameters['W1'] = cp.random.randn(filters, input_dimension[0], filter_size[0], filter_size[1])  # filters
+        self.parameters['W1'] = init_std * \
+            cp.random.randn(filters, input_dimension[0], filter_size[0], filter_size[1])  # filters
         self.parameters['b1'] = cp.zeros(filters)  # bias in convolution
-        self.parameters['W2'] = cp.random.randn(FN*OH*OW, hidden_size)
+        self.parameters['W2'] = init_std * \
+            cp.random.randn(FN*OH*OW, hidden_size)
         self.parameters['b2'] = cp.zeros(hidden_size)
-        self.parameters['W3'] = cp.random.randn(hidden_size, output_size)
+        self.parameters['W3'] = init_std * \
+            cp.random.randn(hidden_size, output_size)
         self.parameters['b3'] = cp.zeros(output_size)
 
         self.layers = {}
@@ -206,8 +298,6 @@ class CNN:
 
 
 
-
-
 # Load MNIST dataset
 with open("MNIST_onehot.pickle", "rb") as fr:
     x_train = pickle.load(fr)
@@ -220,11 +310,11 @@ x_test = x_test.reshape(10000, 1, 28, 28)
 
 # Apply model to MNIST dataset
 model = CNN()
-batch_size = 3
-learning_rate = 0.1
+batch_size = 1
+learning_rate = 1
 loss_list = []
 
-for _ in tqdm(range(50)):
+for _ in tqdm(range(100)):
     batch_mask = cp.random.choice(len(x_train), batch_size)
     x_batch = x_train[batch_mask]
     t_batch = t_train[batch_mask]
