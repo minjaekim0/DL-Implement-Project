@@ -58,6 +58,39 @@ class Softmax_with_CE: # y = softmax(x), L = CE(y, t)
         return dLdx
 
 
+class Adam:
+    def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999):
+        self.alpha = alpha
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.m = None
+        self.v = None
+        self.t = 0
+        
+    def update(self, parameters, gradients):
+        alpha = self.alpha
+        beta1 = self.beta1
+        beta2 = self.beta2
+        m = self.m
+        v = self.v
+        t = self.t
+
+        if m is None:
+            m, v = {}, {}
+            for key, value in parameters.items():
+                m[key] = cp.zeros_like(value)
+                v[key] = cp.zeros_like(value)
+        
+        self.t += 1
+        
+        for key in parameters.keys():
+            m[key] = beta1 * m[key] + (1 - beta1) * gradients[key]
+            v[key] = beta2 * v[key] + (1 - beta2) * (gradients[key] ** 2)
+            
+            parameters[key] -= alpha * ((1 - beta2 ** t) ** 1/2) / (1 - beta1 ** 2) \
+                * m[key] / (cp.sqrt(v[key]) + 1e-8)
+
+
 class TwoLayerNN:
     def __init__(self, input_size, hidden_size, output_size):
         self.parameters = {}
@@ -89,7 +122,7 @@ class TwoLayerNN:
         return cp.sum(y == t) / len(x)
 
     def back_propagation(self, x, t):
-        self.loss(x, t)  # Some functions need forward before backward
+        self.loss_ = self.loss(x, t)  # Some functions need forward before backward
 
         dLdx = 1
         dLdx = self.last_layer.backward(dLdx)
@@ -104,6 +137,8 @@ class TwoLayerNN:
         return gradients
 
 
+
+
 # Load MNIST dataset
 with open("MNIST_flattened_onehot.pickle", "rb") as fr:
     x_train = pickle.load(fr)
@@ -114,23 +149,45 @@ with open("MNIST_flattened_onehot.pickle", "rb") as fr:
 # Apply model to MNIST dataset
 model = TwoLayerNN(784, 100, 10)
 batch_size = 100
-learning_rate = 0.1
-loss_list = []
+# learning_rate = 0.01
+train_loss_list = []
+test_loss_list = []
+test_acc_list = []
 
-for _ in tqdm(range(1000)):
+adam = Adam()
+for iter_ in tqdm(range(10000)):
     batch_mask = cp.random.choice(len(x_train), batch_size)
     x_batch = x_train[batch_mask]
     t_batch = t_train[batch_mask]
 
     gradients = model.back_propagation(x_batch, t_batch)
-    for key in model.parameters.keys():
-        model.parameters[key] -= learning_rate * gradients[key]
-    
-    loss_list.append(model.loss(x_batch, t_batch))
+    adam.update(model.parameters, gradients)
 
-# plot loss vs iteration
+    # Stochastic Gradient Descent
+    # for key in model.parameters.keys():
+    #     model.parameters[key] -= learning_rate * gradients[key]
+
+
+    if (iter_+1) % 100 == 0:
+        y_test = softmax(model.predict(x_test))
+        test_loss = CE(y_test, t_test)
+        test_acc = cp.sum(y_test.argmax(axis=1) == t_test.argmax(axis=1)) / y_test.shape[0]
+
+        train_loss_list.append(model.loss_)
+        test_loss_list.append(test_loss)
+        test_acc_list.append(test_acc)
+        tqdm.write(f"iter: {iter_+1} / train_loss: {model.loss_} / test_loss: {test_loss} / test_acc: {test_acc}")
+
+    
+# Plot test accuracy vs iteration
 plt.figure()
-plt.plot(loss_list)
+plt.subplot(211)
+plt.plot(train_loss_list)
+plt.plot(test_loss_list)
+plt.ylabel('loss')
+
+plt.subplot(212)
+plt.plot(test_acc_list)
 plt.xlabel('iteration')
-plt.ylabel('train error')
+plt.ylabel('accuracy')
 plt.show()
