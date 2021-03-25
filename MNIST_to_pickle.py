@@ -3,8 +3,21 @@ from tensorflow.keras.datasets import mnist
 import pickle
 
 (x_train, temp_train), (x_test, temp_test) = mnist.load_data()
+
 x_train = cp.array(x_train) / 255.0
 x_test = cp.array(x_test) / 255.0
+temp_train = cp.array(temp_train)
+temp_test = cp.array(temp_test)
+
+
+shuffled_index_train = cp.arange(x_train.shape[0])
+cp.random.shuffle(shuffled_index_train)
+x_train, temp_train = x_train[shuffled_index_train], temp_train[shuffled_index_train]
+
+shuffled_index_test = cp.arange(x_test.shape[0])
+cp.random.shuffle(shuffled_index_test)
+x_test, temp_test = x_test[shuffled_index_test], temp_test[shuffled_index_test]
+
 
 # t -> one-hot encoding
 t_train = cp.zeros((60000, 10))
