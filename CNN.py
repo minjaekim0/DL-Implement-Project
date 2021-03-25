@@ -222,6 +222,49 @@ class Convolution: # O = I * F + B
         return dLdI
         
 
+class Pooling: # Maximum Pooling, O = Pooling(I)
+    def __init__(self, filter_size):
+        self.filter_size = filter_size
+
+    def forward(self, I):
+        self.I = I
+        N, C, H, W = I.shape
+        FH, FW = self.filter_size
+        X, Y = int(H/FH), int(W/FW)
+
+        I_ = cp.zeros((N*C*X*Y, FH*FW))
+
+        for n in range(N):
+            for c in range(C):
+                for x in range(X):
+                    for y in range(Y):
+                        row = n*C*X*Y + c*X*Y + x*Y + y
+                        I_[row] = I[n, c, x*FH:(x+1)*FH, y*FW:(y+1)*FW].reshape(-1)
+        
+        self.I_mask = I_.argmax(axis=1)
+        I_ = I_.max(axis=1)
+        O = I_.reshape(N, C, X, Y)
+        return O
+    
+    def backward(self, dLdO):
+        I = self.I
+        N, C, H, W = I.shape
+        FH, FW = self.filter_size
+        X, Y = int(H/FH), int(W/FW)
+
+        dLdI_ = cp.zeros((N*C*X*Y, FH*FW))
+
+        for n in range(N):
+            for c in range(C):
+                for x in range(X):
+                    for y in range(Y):
+                        row = n*C*X*Y + c*X*Y + x*Y + y
+                        dLdI_[row, self.I_mask[row]] = dLdO[n, c, x, y]
+        
+        dLdI = dLdI_.reshape(N, C, H, W)
+        return dLdI
+
+
 class Flatten: # y = Flatten(x)
     def forward(self, x):
         self.x_shape = x.shape
@@ -278,7 +321,7 @@ class CNN:
             cp.random.randn(filters, input_dimension[0], filter_size[0], filter_size[1])  # filters
         self.parameters['b1'] = cp.zeros(filters)  # bias in convolution
         self.parameters['W2'] = init_std * \
-            cp.random.randn(FN*OH*OW, hidden_size)
+            cp.random.randn(int(FN*OH*OW / (2**2)), hidden_size)
         self.parameters['b2'] = cp.zeros(hidden_size)
         self.parameters['W3'] = init_std * \
             cp.random.randn(hidden_size, output_size)
@@ -287,6 +330,7 @@ class CNN:
         self.layers = {}
         self.layers['Conv1'] = Convolution(self.parameters['W1'], self.parameters['b1'])
         self.layers['ReLU1'] = ReLU()
+        self.layers['Pooling1'] = Pooling((2, 2))
         self.layers['Flatten'] = Flatten()
         self.layers['Affine1'] = Affine(self.parameters['W2'], self.parameters['b2'])
         self.layers['ReLU2'] = ReLU()
@@ -373,7 +417,7 @@ for iter_ in tqdm(range(1000)):
         test_acc_list.append(test_acc)
 
         tqdm.write(f"iter: {iter_+1} / train_loss: {model.loss_} / test_loss: {test_loss} / test_acc: {test_acc}")
-        
+
     else:
         tqdm.write(f"iter: {iter_+1} / train_loss: {model.loss_}")
 
