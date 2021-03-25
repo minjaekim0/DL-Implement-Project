@@ -89,14 +89,14 @@ class Convolution: # O = I * F + B
                         O[n, fn, oh, ow] += B[fn]
         """
 
-        I_ = cp.zeros((N, OH*OW, C*FH*FW))
+        I_ = cp.zeros((N*OH*OW, C*FH*FW))
         F_ = cp.zeros((C*FH*FW, FN))
-        B_ = cp.zeros((OH*OW, FN))
+        B_ = cp.zeros((N*OH*OW, FN))
 
         for n in range(N):
             for oh in range(OH):
                 for ow in range(OW):
-                    I_[n, oh*OW + ow] = I[n, 0:C, oh:oh+FH, ow:ow+FW].reshape(-1)
+                    I_[n*OH*OW + oh*OW + ow] = I[n, 0:C, oh:oh+FH, ow:ow+FW].reshape(-1)
 
         for fn in range(FN):
             F_[:, fn] = F[fn, 0:C, 0:FH, 0:FW].reshape(-1)
@@ -106,7 +106,7 @@ class Convolution: # O = I * F + B
 
         for n in range(N):
             for fn in range(FN):
-                O[n, fn] = O_[n, :, fn].reshape(OH, OW)
+                O[n, fn] = O_[n*OH*OW : (n+1)*OH*OW, fn].reshape(OH, OW)
 
         return O
 
@@ -199,13 +199,13 @@ class Convolution: # O = I * F + B
         dLdO_padding = cp.zeros((N, FN, OH+2*FH-2, OW+2*FW-2))
         dLdO_padding[:, :, FH-1:FH+OH-1, FW-1:FW+OW-1] = dLdO
 
-        dLdO_I = cp.zeros((N, H*W, FN*FH*FW))
+        dLdO_I = cp.zeros((N*H*W, FN*FH*FW))
         F_I = cp.zeros((FN*FH*FW, C))
 
         for n in range(N):
             for h in range(H):
                 for w in range(W):
-                    dLdO_I[n, h*W + w] = \
+                    dLdO_I[n*H*W + h*W + w] = \
                         dLdO_padding[n, 0:FN, h:h+FH, w:w+FW].reshape(-1)
                     # h-FH+1:h+1 -> add FH-1 to both
                     # w-FW+1:w+1 -> add FW-1 to both
@@ -217,7 +217,7 @@ class Convolution: # O = I * F + B
 
         for n in range(N):
             for c in range(C):
-                dLdI[n, c] = dLdI_I[n, :, c].reshape(H, W)
+                dLdI[n, c] = dLdI_I[n*H*W : (n+1)*H*W, c].reshape(H, W)
 
         return dLdI
         
@@ -236,8 +236,8 @@ class Flatten: # y = Flatten(x)
 
 
 class CNN:
-    def __init__(self, input_dimension=(1, 28, 28), filters=7, filter_size=(5, 5), \
-        hidden_size=100, output_size=10, init_std = 1):
+    def __init__(self, input_dimension=(1, 28, 28), filters=30, filter_size=(5, 5), \
+        hidden_size=100, output_size=10, init_std = 0.1):
         C, H, W = input_dimension
         FN = filters
         FH, FW = filter_size
@@ -310,11 +310,11 @@ x_test = x_test.reshape(10000, 1, 28, 28)
 
 # Apply model to MNIST dataset
 model = CNN()
-batch_size = 1
-learning_rate = 1
+batch_size = 50
+learning_rate = 0.01
 loss_list = []
 
-for _ in tqdm(range(100)):
+for _ in tqdm(range(10)):
     batch_mask = cp.random.choice(len(x_train), batch_size)
     x_batch = x_train[batch_mask]
     t_batch = t_train[batch_mask]
