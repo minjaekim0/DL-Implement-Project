@@ -1,9 +1,6 @@
 *test.py
 *.pickle
 
-# datasets
-ptb/
-
 # setting.json
 .vscode/
 
