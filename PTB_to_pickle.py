@@ -5,7 +5,7 @@ import pickle
 
 # Dataset Source: https://deepai.org/dataset/penn-treebank
 
-with open("ptb_sequence.pickle", "wb") as fw:
+with open("PTB_sequence.pickle", "wb") as fw:
     id_to_word = {}
     word_to_id = {}
     
