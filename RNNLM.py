@@ -177,7 +177,7 @@ class RNNLM:
         self.parameters['RNN_W_h'] = cp.random.randn(H, H)
         self.parameters['RNN_W_x'] = cp.random.randn(D, H)
         self.parameters['RNN_b'] = cp.zeros(H)
-        self.parameters['Aff_W'] = cp.random.randn(H, V)
+        self.parameters['Aff_W'] = cp.random.randn(H, V) / cp.sqrt(H)
         self.parameters['Aff_b'] = cp.zeros(V)
 
         self.layers = {}
@@ -266,6 +266,8 @@ for epoch in tqdm(range(100)):
     perplexity = cp.exp(total_loss / max_iter)
     perplexity_list.append(perplexity)
 
+
+print(perplexity_list[-1])
 
 # Plot test perplexity vs iteration
 plt.figure()
