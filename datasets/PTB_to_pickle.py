@@ -5,13 +5,13 @@ import pickle
 
 # Dataset Source: https://deepai.org/dataset/penn-treebank
 
-with open("PTB_sequence.pickle", "wb") as fw:
+with open("datasets/PTB_sequence.pickle", "wb") as fw:
     id_to_word = {}
     word_to_id = {}
     
     for purpose in ['train', 'valid', 'test']:
         sequence = []
-        path = 'ptbdataset/ptb.' + purpose + '.txt'
+        path = 'datasets/ptbdataset/ptb.' + purpose + '.txt'
 
         with open(path, 'r') as f:
             words = f.read().replace('\n', '<eos>').strip().split()

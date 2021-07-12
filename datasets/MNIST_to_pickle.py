@@ -2,6 +2,7 @@ import cupy as cp
 from tensorflow.keras.datasets import mnist
 import pickle
 
+
 (x_train, temp_train), (x_test, temp_test) = mnist.load_data()
 
 x_train = cp.array(x_train) / 255.0
@@ -29,7 +30,7 @@ for i, n in enumerate(temp_test):
 
 
 # original 2D dataset
-with open("MNIST_onehot.pickle", "wb") as fw:
+with open("datasets/MNIST_onehot.pickle", "wb") as fw:
     pickle.dump(x_train, fw)
     pickle.dump(x_test, fw)
     pickle.dump(t_train, fw)
@@ -40,7 +41,7 @@ with open("MNIST_onehot.pickle", "wb") as fw:
 x_train = cp.array(x_train.reshape(60000, 784) / 255)
 x_test = cp.array(x_test.reshape(10000, 784) / 255)
 
-with open("MNIST_flattened_onehot.pickle", "wb") as fw:
+with open("datasets/MNIST_flattened_onehot.pickle", "wb") as fw:
     pickle.dump(x_train, fw)
     pickle.dump(x_test, fw)
     pickle.dump(t_train, fw)
