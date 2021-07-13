@@ -1,5 +1,4 @@
 # DeepLearning-Implement-Project
-- Implement deep learning models with using only CuPy(NumPy for CUDA)
 
 ### DLWithBasicOps
 - acts as a DL package
