@@ -1,4 +1,4 @@
-# DeepLearning-Implement-Project
+# deeplearning-with-cp
 
 ### DLwithcp
 - acts as a DL package
