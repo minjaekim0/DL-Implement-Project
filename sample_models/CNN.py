@@ -5,7 +5,7 @@ import pickle
 
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from DLWithBasicOps import functions, layers, optimizers
+from DLwithcp import functions, layers, optimizers
 
 
 class CNN:

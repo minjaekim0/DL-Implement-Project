@@ -1,5 +1,5 @@
 import cupy as cp
-from DLWithBasicOps import functions
+from DLwithcp import functions
 
 
 class Affine: # A = xW + b
