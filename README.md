@@ -1,8 +1,8 @@
 # DeepLearning-Implement-Project
 
-### DLWithBasicOps
+### DLwithcp
 - acts as a DL package
-- written only with cupy's Basic Operations
+- written only with cupy's Basic Functions
 - consists of functions, layers and optimizers
 
 ### datasets
