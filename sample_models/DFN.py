@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from DLwithcp import functions, layers, optimizers
 
 
-class TwoLayerNN:
+class DFN:
     def __init__(self, input_size, hidden_size, output_size):
         self.parameters = {}
         self.parameters['W1'] = cp.random.randn(input_size, hidden_size)
@@ -62,7 +62,7 @@ with open("datasets\MNIST_flattened_onehot.pickle", "rb") as fr:
     t_test = pickle.load(fr)
 
 # Apply model to MNIST dataset
-model = TwoLayerNN(784, 100, 10)
+model = DFN(784, 100, 10)
 optimizer = optimizers.Adam()
 batch_size = 100
 train_loss_list = []
